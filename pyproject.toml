@@ -1,0 +1,33 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pinn_d7"
+version = "0.1.0"
+description = "Physics-informed NN for probe D7-brane embeddings"
+authors = [{ name = "V. Filev", email = "you@example.com" }]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.26"# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pinn_d7"
+version = "0.1.0"
+description = "Physics-informed NN for probe D7-brane embeddings"
+authors = [{ name = "V. Filev", email = "you@example.com" }]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.26.4",
+    "torch>=2.5.0",      # use the CUDA/MPS wheel that matches your hardware
+    "matplotlib>=3.9.2"
+],
+    "torch>=2.5.0",      # use the CUDA/MPS wheel that matches your hardware
+    "matplotlib>=3.9.2"
+]

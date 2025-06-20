@@ -20,7 +20,7 @@ from torch import nn
 import numpy as np
 
 from .models import LNetworkM
-from .losses import dbi_energy_hot_m
+from .losses import dbi_energy_map_conditional
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +69,8 @@ def train_conditional(
     resume_from: Optional[str | pathlib.Path] = None,
     device: Optional[torch.device] = None,
     live_plot: bool = False,
-    reference_file: str = 'data/HotFree0_0_9.csv'
+    potential: str = "hot",
+    ref_file: str = 'data/HotFree0_0_9.csv'
 ) -> Tuple[nn.Module, List[Dict[str, object]]]:
     """
     Train the conditional network ``l(ρ, m)`` against the hot DBI energy.
@@ -132,7 +133,7 @@ def train_conditional(
     ckpt_root.mkdir(exist_ok=True)
     history: List[Dict[str, object]] = []
     
-    Fs = np.loadtxt(reference_file, delimiter=",")
+    Fs = np.loadtxt(ref_file, delimiter=",")
     sel = (Fs[:, 0] >= m_min) & (Fs[:, 0] <= m_max)
     Fs = Fs[sel, :]
 
@@ -144,7 +145,7 @@ def train_conditional(
     # –– training loop -------------------------------------------------------
     t0 = time.time()
     for epoch in range(start_epoch + 1, start_epoch + n_epochs + 1):
-        if epoch % 10 == 0:
+        if epoch % 5 == 0:
             extremal = m_min if torch.rand(()) < 0.5 else m_max
             m_batch = torch.full((batch_m, 1), extremal,
                                  device=device, dtype=torch.float64)
@@ -152,8 +153,8 @@ def train_conditional(
             m_batch = (m_min + (m_max - m_min) *
                        torch.rand(batch_m, 1, device=device)).double()
         
-        
-        loss = dbi_energy_hot_m(model, ρ_grid, m_batch, reduce="mean")
+        dbi_energy = dbi_energy_map_conditional.get(potential)
+        loss = dbi_energy(model, ρ_grid, m_batch, reduce="mean")
 
         optim.zero_grad()
         loss.backward()
@@ -166,7 +167,7 @@ def train_conditional(
         # ---- diagnostics ---------------------------------------------------
         if epoch % diagnostics_every == 0 or epoch == 1:
             m_eval = torch.linspace(m_min, m_max, 60, device=device).unsqueeze(1)
-            F_eval = dbi_energy_hot_m(model, ρ_grid, m_eval, reduce="none").detach()
+            F_eval = dbi_energy(model, ρ_grid, m_eval, reduce="none").detach()
             history.append(
                 {
                     "epoch": epoch,
@@ -209,3 +210,61 @@ def train_conditional(
     elapsed = (time.time() - t0) / 60
     print(f"\nTraining finished in {elapsed:.1f} min.")
     return model, history
+
+
+def evaluate_condensate(
+    model: nn.Module,
+    ρ_max=20.0,
+    N_grid=2000,
+    cut=5.0,
+    m_min=0.0,
+    m_max=1.0,
+    potential: str = "magnetic",
+    device: Optional[torch.device] = None,
+    n_epochs: int = 30000,
+) -> torch.Tensor:
+    """
+    Evaluate the DBI condensate for a range of masses.
+
+    Parameters
+    ----------
+    model
+        The trained conditional network.
+    ρ_grid
+        Collocation grid (on device).
+    m_eval
+        Masses to evaluate the condensate at (on device).
+    potential
+        The type of potential, either "hot" or "magnetic".
+
+    -------
+    plots comparision of the condensate from ANN with the ODE result.
+    -------
+    """
+    dbi_energy = dbi_energy_map_conditional.get(potential)
+    
+    m_eval = torch.linspace(m_min, m_max, 101, device=device).unsqueeze(1)
+    m_eval.requires_grad_(True)
+    
+    
+    ρ_grid = build_rho_grid(ρ_max, N_grid, cut, device)
+
+    I_eval = dbi_energy(model, ρ_grid, m_eval, reduce="none")
+
+    dIdm = torch.autograd.grad(I_eval.sum(), m_eval, create_graph=False)[0]
+
+    cs = np.loadtxt("data/MagCondensate.csv", delimiter=",")
+
+    plt.figure(figsize=(4,3.2))
+    plt.plot(m_eval.cpu().detach()[:, 0], dIdm.cpu().detach(), '-', lw=2, label="ANN")
+    plt.xlabel("mass $m$")
+    plt.ylabel("$dF/dm$")
+    plt.title(f"Fundamental condensate (magnetic)")
+    plt.plot(cs[:, 0], cs[:, 1], 'x', lw=2, label="ODE", color='red')
+    plt.grid(alpha=.4)
+    plt.tight_layout()
+    plt.legend()
+    plt.savefig(f"plots/c_vs_m_magnetic_{n_epochs}.png", dpi=300, bbox_inches="tight")
+    plt.show(block=False)   # display without blocking the script
+    plt.pause(0.1)          # give the GUI event loop time to draw
+    

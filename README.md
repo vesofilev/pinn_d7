@@ -3,12 +3,13 @@ Physics-informed neural networks (PINNs) for solving probe D7-brane
 embeddings in holographic backgrounds and extracting their free-energy
 and condensate curves.
 
-The repository now contains **two complementary training pipelines**
+The repository now contains **three complementary training pipelines**
 
 | script | task | network learns | potentials supported |
 | ------ | ---- | -------------- | -------------------- |
 | `scripts/run_mass_scan.py` | *one network per mass* (**independent training**) | the profile \(L(\rho)\) for a single bare mass \(m\) | `magnetic`, `hot`, `hot-zoom` |
 | `scripts/run_mass_cond.py` | *one conditional network* (**joint training**) | the full function \(L(\rho,m)\) for **all** \(m\in[m_\text{min},m_\text{max}]\) | `magnetic`, `hot` |
+| `scripts/run_inverse.py` | *inverse problem* (**joint reconstruction**) | both \(L(\rho,m)\) and the radial potential \(V(r)\) | `magnetic`, `hot` |
 
 ---
 
@@ -107,7 +108,37 @@ python scripts/run_mass_cond.py \
 
 ---
 
-## 4. Directory structure (data + code)
+## 4. Inverse‑problem training (joint recovery of \(L(\rho,m)\) and \(V(r)\))
+
+The *inverse* trainer simultaneously learns the D7‑brane embedding **and** the underlying radial potential.  
+Training alternates between updating the embedding network (*L*) and the potential network (*V*) every other gradient step, guided by the reference free‑energy curve.
+
+```bash
+python scripts/run_inverse.py --potential magnetic \
+       --epochs 50000 \
+       --checkpoint_dir checkpoints_inverse_mag \
+       --lr_L 1e-4 --lr_V 5e-4 \
+       --live --wait
+```
+
+| flag | default | description |
+| ---- | ------- | ----------- |
+| `--potential` | `hot` | choose `hot` or `magnetic` |
+| `--lr_L` | `1e-4` | learning rate for the *L*‑network |
+| `--lr_V` | `5e-4` | learning rate for the *V*‑network |
+| `--batch` | `1` | masses per SGD step |
+| `--live` | off | live plots of \(F(m)\) and \(V(r)\) during training |
+| `--plot` | off | after training, save static plots for \(F(m)\) and \(V(r)\) |
+| `--wait` | off | keep the script alive until **Enter** is pressed |
+
+**Outputs**
+
+* `plots/F_and_V_<epochs>_inverse.png` – side‑by‑side \(F(m)\) and \(V(r)\)  
+* **Checkpoints** every 1 k epochs, written to `checkpoints_inverse/ckpt_epoch_XXXXXX.pt`
+
+---
+
+## 5. Directory structure (data + code)
 HotFreeZoom.csv
 ```
 pinn_d7/
@@ -121,15 +152,17 @@ pinn_d7/
 │   ├── models.py                  # neural-network definitions (LNetwork, LNetworkM)
 │   ├── losses.py                  # DBI free-energy functionals
 │   ├── train_conditional.py       # ★ new conditional training loop (hot & magnetic)
+│   ├── train_inverse.py       # inverse‑problem training loop (joint l & V)
 │   └── trainer.py                 # utilities for mass-scan training
 └── scripts/                       # CLI entry points
     ├── run_mass_scan.py           # independent (per-mass) training
-    └── run_mass_cond.py           # conditional (multi-mass) training
+    ├── run_inverse.py           # inverse‑problem training
+    └── run_mass_cond.py         # conditional (multi-mass) training
 ```
 
 ---
 
-## 5. Reproducibility & tips
+## 6. Reproducibility & tips
 
 * **Determinism**: set `torch.manual_seed(seed)` before training.
 * **Apple Silicon**: to enable the Metal backend pass
@@ -139,6 +172,6 @@ pinn_d7/
 
 ---
 
-## 6. License
+## 7. License
 
 MIT License – see [`LICENSE`](LICENSE) for details.

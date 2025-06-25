@@ -143,8 +143,6 @@ Outputs
 ⸻
 
 ## 5. Directory structure (data + code)
-
-HotFreeZoom.csv
 <pre>
 pinn_d7/  
 ├── data/                          # reference ODE solutions (CSV)  

@@ -40,20 +40,21 @@ macOS + OpenMP quirk is handled internally (KMP_DUPLICATE_LIB_OK=TRUE).
 ## 2. Mass-scan training (independent networks)
 
 Train individual networks for a list of masses and compare their profiles:
-
+<pre>
 python scripts/run_mass_scan.py 0.05 0.1 0.2 0.3 \
        --epochs 40000 \
        --lr 1e-4 \
        --potential magnetic \
        --skip 0
-
+</pre>
+<pre>
 flag	default	meaning:  
 --potential	magnetic	choose magnetic, hot or hot-zoom  
 --epochs	30000	optimisation steps per network  
 --lr	1e-4	Adam learning rate  
 --sort	False	train masses in descending order (warm-start)  
 --skip	0	skip the first n masses when plotting  
-
+</pre>
 Outputs  
 	•	plots/probe_d7_profiles_<epochs>_<potential>.png – profiles L(\rho)  
 	•	plots/F_vs_m_<epochs>_<potential>.png      – free energy F(m)  
@@ -68,6 +69,7 @@ It can live-stream the free-energy curve and (for the magnetic case) the
 condensate c(m)=\partial_mF.
 
 ### HOT plasma, live plot + final static plot
+<pre>
 python scripts/run_mass_cond.py \
        --epochs 30000 \
        --lr 1e-5 \
@@ -75,8 +77,9 @@ python scripts/run_mass_cond.py \
        --m_min 0.0 --m_max 0.9 \
        --potential hot \
        --live --plot --wait
-
+</pre>
 ### Magnetic field, plus condensate evaluation
+<pre>
 python scripts/run_mass_cond.py \
        --epochs 120000 \
        --lr 1e-4 \
@@ -84,9 +87,10 @@ python scripts/run_mass_cond.py \
        --m_min 0.0 --m_max 1.0 \
        --potential magnetic \
        --plot          # <- also produces the condensate plot
-
+</pre>
 Key flags (new & old)
 
+<pre>
 flag	default	description:  
 --potential	hot	choose hot or magnetic  
 --batch	1	masses per SGD step (mini-batch size)  
@@ -94,6 +98,7 @@ flag	default	description:
 --plot	off	after training, save static plots for F(m) (both potentials) and dF/dm (magnetic only)  
 --wait	off	keep the script alive until Enter is pressed (gives you time to inspect plots)  
 --resume	—	path to a checkpoint (checkpoints_<pot>/ckpt_epoch_XXXXXX.pt) to resume  
+</pre>
 
 Outputs  
 	•	Free energy plots/F_vs_m_<epochs>_<potential>_conditional.png  
@@ -111,12 +116,14 @@ Currently only the hot-plasma potential is fully supported.
 Magnetic backgrounds would require modifying the ANN’s near-origin
 asymptotics to satisfy the magnetic-brane boundary conditions.
 
+<pre>
 python scripts/run_inverse.py --potential hot \
        --epochs 50000 \
        --checkpoint_dir checkpoints_inverse_hot \
        --lr_L 1e-4 --lr_V 5e-4 \
        --live --wait
-
+</pre>
+<pre>
 flag	default	description:  
 --potential	hot	only hot is officially supported †  
 --lr_L	1e-4	learning rate for the L-network  
@@ -127,6 +134,7 @@ flag	default	description:
 --wait	off	keep the script alive until Enter is pressed  
 
 † Magnetic potentials may be trained if the ANN’s small-rho behaviour is adjusted accordingly.
+</pre>
 
 Outputs  
 	•	plots/F_and_V_<epochs>_inverse.png – side-by-side F(m) and V(r)  
@@ -161,8 +169,7 @@ pinn_d7/
 
 ## 6. Reproducibility & tips  
 	•	Determinism: set torch.manual_seed(seed) before training.  
-	•	Apple Silicon: to enable the Metal backend pass  
-pinn_d7.trainer.get_default_device(allow_mps=True).  
+	•	Apple Silicon: to enable the Metal backend pass pinn_d7.trainer.get_default_device(allow_mps=True).  
 	•	OpenMP on macOS/conda: already patched via os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE" in run_mass_cond.py.  
 
 ⸻

@@ -6,10 +6,11 @@ and condensate curves.
 
 The repository now contains three complementary training pipelines
 
-script	task	network learns	potentials supported
-scripts/run_mass_scan.py	one network per mass (independent training)	the profile L(\rho) for a single bare mass m	magnetic, hot, hot-zoom
-scripts/run_mass_cond.py	one conditional network (joint training)	the full function L(\rho,m) for all m\in[m_\text{min},m_\text{max}]	magnetic, hot
-scripts/run_inverse.py	inverse problem (joint reconstruction)	both L(\rho,m) and the radial potential V(r)	hot†
+| Script                      | Task                                      | Network Learns                                  | Potentials Supported      |
+|----------------------------|-------------------------------------------|--------------------------------------------------|---------------------------|
+| `scripts/run_mass_scan.py` | one network per mass (independent training) | the profile L(ρ) for a single bare mass *m*     | magnetic, hot, hot-zoom   |
+| `scripts/run_mass_cond.py` | one conditional network (joint training)   | the full function L(ρ, *m*) for all *m* in [*m*ₘᵢₙ, *m*ₘₐₓ] | magnetic, hot             |
+| `scripts/run_inverse.py`   | inverse problem (joint reconstruction)     | both L(ρ, *m*) and the radial potential V(*r*)  | hot†                      |
 
 † Magnetic potentials could be supported provided the asymptotic
 behaviour of the ANN near the origin (\rho \to 0) is modified to

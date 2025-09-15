@@ -89,7 +89,9 @@ def train_inverse(
         resume_from    : Optional[str | pathlib.Path] = None,
         device         : Optional[torch.device] = None,
         live_plot      : bool                = True,
-        potential      : str                 = "hot"
+        potential      : str                 = "hot",
+        hidden         : int                 = 16,
+        depth          : int                 = 2
 ) -> Tuple[nn.Module, nn.Module, List[Dict[str, object]]]:
     """
     Jointly train (l , V).
@@ -110,8 +112,8 @@ def train_inverse(
                             device=device).unsqueeze(1)
 
     # –– models & optimisers ----------------------------------------------
-    l_model = LNetworkM(ρ_max).to(device)
-    v_model = VNetwork(r_max).to(device)
+    l_model = LNetworkM(ρ_max, hidden=hidden, depth=depth).to(device)
+    v_model = VNetwork(r_max, hidden=hidden, depth=depth).to(device)
 
     opt_L = torch.optim.Adam(l_model.parameters(), lr=lr_L)
     opt_V = torch.optim.Adam(v_model.parameters(), lr=lr_V)

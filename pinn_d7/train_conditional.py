@@ -70,8 +70,14 @@ def train_conditional(
     device: Optional[torch.device] = None,
     live_plot: bool = False,
     potential: str = "hot",
-    ref_file: str = 'data/HotFree0_0_9.csv'
-) -> Tuple[nn.Module, List[Dict[str, object]]]:
+    ref_file: str = 'data/HotFree0_0_9.csv',
+    hidden: int = 16,
+    depth: int = 2,
+    seed: Optional[int] = None,
+    init_strategy: str = 'physics_informed',
+    mae_eval_fn = None,
+    condensate_mae_eval_fn = None
+) -> Tuple[nn.Module, List[Dict[str, object]], Optional[Dict[str, List]], Optional[Dict[str, List]]]:
     """
     Train the conditional network ``l(ρ, m)`` against the hot DBI energy.
 
@@ -110,10 +116,20 @@ def train_conditional(
     # –– device & dtype ------------------------------------------------------
     device = device or (torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"))
     torch.set_default_dtype(torch.float64)
+    
+    # –– set random seed if provided ------------------------------------------
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
     # –– grid & model --------------------------------------------------------
     ρ_grid = build_rho_grid(ρ_max, N_grid, cut, device)
-    model = LNetworkM(ρ_max).to(device)
+    model = LNetworkM(ρ_max, hidden=hidden, depth=depth).to(device)
+    
+    # Apply custom initialization strategy
+    if init_strategy != 'physics_informed':  # physics_informed is default in __init__
+        model.reinitialize_weights(init_strategy)
+    
     optim = torch.optim.Adam(model.parameters(), lr=lr)
 
     # –– optional resume -----------------------------------------------------
@@ -132,6 +148,14 @@ def train_conditional(
     ckpt_root = pathlib.Path(checkpoint_dir)
     ckpt_root.mkdir(exist_ok=True)
     history: List[Dict[str, object]] = []
+    
+    # MAE tracking arrays
+    mae_history = []
+    mae_epochs = []
+    
+    # Condensate MAE tracking arrays
+    condensate_mae_history = []
+    condensate_mae_epochs = []
     
     Fs = np.loadtxt(ref_file, delimiter=",")
     sel = (Fs[:, 0] >= m_min) & (Fs[:, 0] <= m_max)
@@ -206,10 +230,27 @@ def train_conditional(
                 ckpt_file,
             )
             print(f"✔ Checkpoint saved to {ckpt_file}")
+            
+            # ---- MAE evaluation at checkpoint --------------------------------
+            if mae_eval_fn is not None:
+                mae = mae_eval_fn(model, Fs, ρ_max, N_grid, cut, device, potential)
+                mae_history.append(mae)
+                mae_epochs.append(epoch)
+            
+            # ---- Condensate MAE evaluation at checkpoint ---------------------
+            if condensate_mae_eval_fn is not None:
+                condensate_mae = condensate_mae_eval_fn(model, ρ_max, N_grid, cut, m_min, m_max, device, potential)
+                if condensate_mae is not None:
+                    condensate_mae_history.append(condensate_mae)
+                    condensate_mae_epochs.append(epoch)
 
     elapsed = (time.time() - t0) / 60
     print(f"\nTraining finished in {elapsed:.1f} min.")
-    return model, history
+    
+    # Add MAE history to the return
+    mae_data = {"epochs": mae_epochs, "mae_values": mae_history} if mae_history else None
+    condensate_mae_data = {"epochs": condensate_mae_epochs, "mae_values": condensate_mae_history} if condensate_mae_history else None
+    return model, history, mae_data, condensate_mae_data
 
 
 def evaluate_condensate(
@@ -222,6 +263,8 @@ def evaluate_condensate(
     potential: str = "magnetic",
     device: Optional[torch.device] = None,
     n_epochs: int = 30000,
+    depth: int = 2,
+    hidden: int = 16,
 ) -> torch.Tensor:
     """
     Evaluate the DBI condensate for a range of masses.
@@ -264,7 +307,7 @@ def evaluate_condensate(
     plt.grid(alpha=.4)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(f"plots/c_vs_m_magnetic_{n_epochs}.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"plots/c_vs_m_magnetic_{n_epochs}_D{depth}N{hidden}R{N_grid}.png", dpi=300, bbox_inches="tight")
     plt.show(block=False)   # display without blocking the script
     plt.pause(0.1)          # give the GUI event loop time to draw
     

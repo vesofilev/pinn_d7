@@ -51,6 +51,8 @@ def parse_args():
     p.add_argument("--checkpoint_dir", type=str, default="checkpoints_inverse",
                    help="directory in which checkpoints are saved")
     p.add_argument("--resume",   type=str, default=None,   help="resume from checkpoint file")
+    p.add_argument("--hidden",   type=int, default=16,     help="hidden layer size")
+    p.add_argument("--depth",    type=int, default=2,      help="number of hidden layers")
     p.add_argument("--plot",     action="store_true",      help="plot F(m) at the end")
     p.add_argument("--live",     action="store_true",      help="live-update plot during training")
     p.add_argument("--wait",     action="store_true",      help="wait for <Enter> before exit")
@@ -83,7 +85,9 @@ def main():
         resume_from    = args.resume,
         device         = device,
         live_plot      = args.live,
-        potential= args.potential.lower()
+        potential= args.potential.lower(),
+        hidden         = args.hidden,
+        depth          = args.depth
     )
 
     # ------------------------------------------------------------------

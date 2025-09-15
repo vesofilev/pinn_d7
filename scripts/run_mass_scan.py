@@ -8,9 +8,25 @@ $ python run_mass_scan.py 0.05 0.1 0.2 0.3 --epochs 40000 --potential magnetic
 """
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+
+# Use a more stable backend for macOS - fallback hierarchy
+def setup_matplotlib_backend():
+    """Setup matplotlib backend with fallback options for macOS."""
+    backends_to_try = ["Qt5Agg", "MacOSX", "TkAgg", "Agg"]
+    
+    for backend in backends_to_try:
+        try:
+            matplotlib.use(backend)
+            print(f"Using matplotlib backend: {backend}")
+            break
+        except (ImportError, RuntimeError):
+            continue
+    else:
+        print("Warning: Could not set any preferred backend, using default")
+
+setup_matplotlib_backend()
 import torch
 import sys
 import os
@@ -32,6 +48,7 @@ def main():
     ap.add_argument("--potential", type=str, default="magnetic", help="either magnetic or hot")
     ap.add_argument("--sort", type=bool, default=False, help="either True or False")
     ap.add_argument("--skip", type=int, default=0, help="how many to skip")
+    ap.add_argument("--no-display", action="store_true", help="save plots without displaying them")
     args = ap.parse_args()
 
     device = get_default_device()
@@ -68,13 +85,18 @@ def main():
     plt.tight_layout()
     # plt.gca().set_aspect(2)
     plt.savefig(f"plots/probe_d7_profiles_{args.epochs}_{args.potential}.png", dpi=300, bbox_inches="tight")
-    plt.show(block=False)
-    plt.pause(0.1) # let the GUI render
+    
+    if not args.no_display:
+        plt.show(block=False)
+        plt.pause(0.1) # let the GUI render
+    else:
+        plt.close()
+        
     plt.figure(figsize=(4.5, 3))
     Fs = np.loadtxt(dafaFree[args.potential], delimiter=",")
     plt.xlabel(r"$m$")
     plt.ylabel(r"$F$")
-    plt.title(r"Free enrgy vs mass")
+    plt.title(r"Free energy vs mass")
     plt.plot(Fs[:,0], Fs[:,1], label="ODE")
     plt.plot(ms, Fs_net, 'x', label='ANN')
     plt.grid(alpha=0.4)
@@ -82,21 +104,24 @@ def main():
     plt.tight_layout()
     # plt.gca().set_aspect(2)
     plt.savefig(f"plots/F_vs_m_{args.epochs}_{args.potential}.png", dpi=300, bbox_inches="tight")
-    plt.show(block=False)
-    plt.pause(0.1)          # let the GUI render
     
-    print("Finished all work.  Press Ctrl+C to exit…")
+    if not args.no_display:
+        plt.show(block=False)
+        plt.pause(0.1)          # let the GUI render
+        
+        print("Finished all work. Plots saved and displayed.")
+        print("Close the plot windows to exit, or press Ctrl+C...")
 
-    try:
-        # Keep Python alive and the figure responsive
-        while True:
-            # Give the GUI 100 ms to process events (draw, resize, etc.)
-            plt.pause(1.0)
-            # (optional) do other lightweight background tasks here
-    except KeyboardInterrupt:
-        # Ctrl+C arrives → clean up and exit gracefully
-        print("\nCtrl+C detected – closing figures and terminating.")
-        plt.close('all')
+        try:
+            # Use input() to wait for user action instead of infinite loop
+            input("\nPress Enter to exit (or close plot windows)...")
+        except KeyboardInterrupt:
+            print("\nCtrl+C detected – closing figures and terminating.")
+        finally:
+            plt.close('all')
+    else:
+        plt.close()
+        print("Finished all work. Plots saved to files (no display).")
 
 
 if __name__ == "__main__":

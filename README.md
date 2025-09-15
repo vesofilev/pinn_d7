@@ -52,7 +52,10 @@ python -m venv .venv
 source .venv/bin/activate
 
 ### install Python dependencies (CPU); add + `torch-cuda` if you have a GPU
-pip install torch matplotlib numpy
+pip install torch matplotlib numpy scipy psutil
+
+# Or install from requirements.txt
+pip install -r requirements.txt
 
 Tip  CUDA/GPU usage is automatic; otherwise the code silently falls
 back to CPU.

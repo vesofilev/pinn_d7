@@ -26,7 +26,9 @@ requires-python = ">=3.9"
 dependencies = [
     "numpy>=1.26.4",
     "torch>=2.5.0",      # use the CUDA/MPS wheel that matches your hardware
-    "matplotlib>=3.9.2"
+    "matplotlib>=3.9.2",
+    "scipy>=1.11.0",     # for numerical integration and interpolation
+    "psutil>=5.9.0"      # for system monitoring in ODE benchmarking scripts
 ],
     "torch>=2.5.0",      # use the CUDA/MPS wheel that matches your hardware
     "matplotlib>=3.9.2"
